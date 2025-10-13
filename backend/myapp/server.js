@@ -1,38 +1,41 @@
+// server.js
 import express from "express";
 import dotenv from "dotenv";
 import helmet from "helmet";
 import cors from "cors";
 import morgan from "morgan";
-import "express-async-errors"; // patch to allow throwing from async handlers
+import "express-async-errors";
 
-import productsRoutes from "./routes/productsRoutes.js";
-import usersRoutes from "./routes/usersRoutes.js";
+import connectDB from "./config/db.js";
+import productsRoutes from "./routes/productRoutes.js";
+import usersRoutes from "./routes/userRoutes.js";
+import authRoutes from "./routes/authRoutes.js";
+import profileRoutes from "./routes/profileRoutes.js";
 import notFound from "./middlewares/notFound.js";
-import errorHandler from "./middlewares/errorHandler.js";
+import errorHandler from "./middlewares/errorHandlers.js";
 
 dotenv.config();
 
 const app = express();
 
-// Middlewares
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
 if (process.env.NODE_ENV === "development") app.use(morgan("dev"));
 
-// API routes
+// connect to MongoDB
+await connectDB(process.env.MONGO_URI);
+
+// routes
+app.use("/api/auth", authRoutes);
 app.use("/api/products", productsRoutes);
 app.use("/api/users", usersRoutes);
+app.use("/api/profile", profileRoutes);
 
-// Health check
 app.get("/health", (req, res) => res.json({ ok: true, ts: new Date().toISOString() }));
 
-// 404 and error handlers (should be after routes)
 app.use(notFound);
 app.use(errorHandler);
 
-// Start server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV} on http://localhost:${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));

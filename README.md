@@ -44,3 +44,6 @@ Cloudinary / S3 (image hosting)
 Environment variables (.env) for secrets
 
 ESLint + Prettier
+lUaVgHuY6Gom2REM
+sumanaayush836_db_user
+mongodb+srv://sumanaayush836_db_user:<db_password>@cluster0.numqmsx.mongodb.net/

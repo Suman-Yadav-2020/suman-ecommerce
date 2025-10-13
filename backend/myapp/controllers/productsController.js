@@ -1,30 +1,26 @@
-import { products } from "../data/seed.js";
-import { v4 as uuidv4 } from "uuid";
+// controllers/productsController.js
+import Product from "../models/Products.js";
 
 /**
- * Note: currently uses in-memory array `products`.
- * Swap to DB later (Mongo/Prisma/Postgres) with minimal changes.
+ * GET /api/products?q=&limit=
  */
-
 export const getAllProducts = async (req, res) => {
-  // support simple query params: ?q=shirt & ?limit=10
   const { q, limit } = req.query;
-  let result = products;
+  const filter = {};
+  if (q) filter.$or = [
+    { name: new RegExp(q, "i") },
+    { description: new RegExp(q, "i") },
+  ];
 
-  if (q) {
-    const term = q.toLowerCase();
-    result = result.filter(
-      p => p.name.toLowerCase().includes(term) || (p.description && p.description.toLowerCase().includes(term))
-    );
-  }
+  const query = Product.find(filter).sort({ createdAt: -1 });
+  if (limit) query.limit(Number(limit));
 
-  if (limit) result = result.slice(0, Number(limit));
-
-  res.json({ count: result.length, data: result });
+  const products = await query.exec();
+  res.json({ count: products.length, data: products });
 };
 
 export const getProductById = async (req, res) => {
-  const product = products.find(p => p.id === req.params.id);
+  const product = await Product.findById(req.params.id);
   if (!product) {
     res.status(404);
     throw new Error("Product not found");
@@ -33,36 +29,33 @@ export const getProductById = async (req, res) => {
 };
 
 export const createProduct = async (req, res) => {
-  const { name, price, description } = req.body;
+  const { name, price, description, image, countInStock } = req.body;
   if (!name || price == null) {
     res.status(400);
     throw new Error("name and price are required");
   }
-  const newProduct = { id: uuidv4(), name, price, description: description || "", createdAt: new Date().toISOString() };
-  products.push(newProduct);
-  res.status(201).json(newProduct);
+  const product = new Product({ name, price, description, image, countInStock });
+  const saved = await product.save();
+  res.status(201).json(saved);
 };
 
 export const updateProduct = async (req, res) => {
-  const product = products.find(p => p.id === req.params.id);
+  const product = await Product.findById(req.params.id);
   if (!product) {
     res.status(404);
     throw new Error("Product not found");
   }
-  const { name, price, description } = req.body;
-  if (name !== undefined) product.name = name;
-  if (price !== undefined) product.price = price;
-  if (description !== undefined) product.description = description;
-  product.updatedAt = new Date().toISOString();
-  res.json(product);
+  Object.assign(product, req.body);
+  const updated = await product.save();
+  res.json(updated);
 };
 
 export const deleteProduct = async (req, res) => {
-  const idx = products.findIndex(p => p.id === req.params.id);
-  if (idx === -1) {
+  const product = await Product.findById(req.params.id);
+  if (!product) {
     res.status(404);
     throw new Error("Product not found");
   }
-  const deleted = products.splice(idx, 1);
-  res.json({ deleted: deleted[0] });
+  await product.remove();
+  res.json({ message: "Product removed" });
 };
